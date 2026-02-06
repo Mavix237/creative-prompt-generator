@@ -1,21 +1,26 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Creative Prompt Generator
 
-# Run and deploy your AI Studio app
+An interactive web application that generates creative prompts by combining random words and constraints. Perfect for artists, designers, and creative professionals looking for inspiration.
 
-This contains everything you need to run your app locally.
+## Features
 
-View your app in AI Studio: https://ai.studio/apps/drive/1yTPQZsOD9onPcn6VzJaUOdRpS0AMxKba
+- 🎲 **Random Word Selection**: Shuffle through a curated pool of creative words
+- 🎨 **Constraint Options**: Add technical and artistic limitations to your prompts
+- 🤖 **AI-Powered Generation**: Generate high-concept creative prompts using OpenAI
+- 💫 **Interactive UI**: Smooth animations and playful interactions
+- 📋 **Easy Copy**: One-click copy to clipboard
 
-## Run Locally
+## Getting Started
 
-**Prerequisites:**  Node.js
+### Prerequisites
 
+- Node.js (v16 or higher)
+- npm or yarn
+- OpenAI API key (for AI prompt generation)
 
-1. Install dependencies:
-   `npm install`
-2. Set the `OPENAI_API_KEY` in [.env.local](.env.local) to your OpenAI API key
-3. Run the app:
-   `npm run dev`
-# creative-prompt-generator
+### Installation
+
+1. Clone the repository:
+   git clone https://github.com/Mavix237/creative-prompt-generator.git
+   cd creative-prompt-generator
+   
