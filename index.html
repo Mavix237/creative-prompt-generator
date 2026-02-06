@@ -1,0 +1,223 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Creative Prompt Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=Space+Mono&family=Inter:wght@400;500&family=Baskervville:wght@300;400&family=Google+Sans+Flex:wght@300;400&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #d1dbdf;
+            color: #4a5568;
+            font-family: 'Baskervville', serif;
+            overflow-x: hidden;
+        }
+        .font-serif-prompt {
+            font-family: 'Baskervville', serif;
+            font-weight: 300;
+            font-style: italic;
+            text-transform: lowercase;
+        }
+        .font-mono-label {
+            font-family: 'Space Mono', monospace;
+        }
+        .font-ai-prompt {
+            font-family: "Google Sans Flex", sans-serif;
+            font-weight: 300;
+            font-optical-sizing: auto;
+            font-style: normal;
+        }
+        .glass-header {
+            background: rgba(255, 255, 255, 0.35);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-button {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+        .glass-button:hover {
+            background: rgba(255, 255, 255, 0.4);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+        .glass-generate-button {
+            background: rgba(61, 75, 88, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), 
+                        inset 0 1px 0 rgba(255, 255, 255, 0.15),
+                        inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+        }
+        .glass-generate-button:hover {
+            background: rgba(61, 75, 88, 0.9);
+            border-color: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25), 
+                        inset 0 1px 0 rgba(255, 255, 255, 0.2),
+                        inset 0 -1px 0 rgba(0, 0, 0, 0.15);
+        }
+        .glass-generate-button::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.6s ease;
+            pointer-events: none;
+        }
+        .glass-generate-button:hover::after {
+            opacity: 1;
+        }
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        .bg-waves {
+            background-image: url('/creative-prompt-generator/assets/BKG7OM89.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
+        .bg-overlay {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.02), rgba(209, 219, 223, 0.08));
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 0.1;
+            }
+            50% {
+                transform: translateY(-20px) rotate(180deg);
+                opacity: 0.3;
+            }
+        }
+        .header-pattern {
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+        .header-column {
+            flex: 1;
+            height: 100%;
+            position: relative;
+        }
+        .header-column-1 { background: #000000; }
+        .header-column-2 { background: #2a2a2a; }
+        .header-column-3 { background: #000000; }
+        .header-column-4 { 
+            background: #2a2a2a;
+        }
+        .header-column-4::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 33.33%;
+            background: #000000;
+        }
+        .header-column-5 { 
+            background: #000000;
+            position: relative;
+        }
+        .header-column-5::before {
+            content: '';
+            position: absolute;
+            top: -25%;
+            left: 0;
+            right: 0;
+            height: 25%;
+            background: #000000;
+        }
+        .header-column-6 { 
+            background: #2a2a2a;
+        }
+        .header-column-6::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 33.33%;
+            background: #000000;
+        }
+        .header-column-7 { background: #000000; }
+        .header-column-8 { 
+            background: #2a2a2a;
+        }
+        .header-column-8::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 66.66%;
+            background: #000000;
+        }
+        .header-column-9 { background: #000000; }
+        .header-column-10 { background: #2a2a2a; }
+        .header-column-11 { background: #000000; }
+    </style>
+
+<link rel="stylesheet" href="/index.css">
+<script type="importmap">
+{
+  "imports": {
+    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4",
+    "openai": "https://esm.sh/openai@^4.67.0"
+  }
+}
+</script>
+  <script type="module" crossorigin src="/creative-prompt-generator/index.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+</body>
+</html>
