@@ -359,7 +359,7 @@ const App: React.FC = () => {
       <header className="sticky top-0 z-50 w-full pt-8 md:pt-10 mb-4">
         <div className="flex justify-center">
           <img 
-            src="/TMLogoB.png" 
+            src={`${import.meta.env.BASE_URL || '/creative-prompt-generator/'}TMLogoB.png`}
             alt="TM Logo" 
             className="h-[35px] w-[74px] object-contain pt-0 pb-0"
           />
