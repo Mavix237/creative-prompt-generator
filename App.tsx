@@ -69,6 +69,8 @@ interface AIActionSectionProps {
   aiPrompt: string | null;
   copyToClipboard: () => void;
   copied: boolean;
+  apiKey: string;
+  onApiKeyChange: (key: string) => void;
 }
 
 const AIActionSection: React.FC<AIActionSectionProps> = memo(({ 
@@ -76,7 +78,9 @@ const AIActionSection: React.FC<AIActionSectionProps> = memo(({
   isGenerating, 
   aiPrompt, 
   copyToClipboard, 
-  copied 
+  copied,
+  apiKey,
+  onApiKeyChange
 }) => {
   const [mousePosition, setMousePosition] = React.useState<{ x: number; y: number } | null>(null);
   const [isClicked, setIsClicked] = React.useState(false);
@@ -112,10 +116,35 @@ const AIActionSection: React.FC<AIActionSectionProps> = memo(({
     <div className="w-full max-w-3xl px-6 pt-12 pb-32 flex flex-col items-center space-y-12">
       <div className="w-16 h-[1px] bg-[#5b6b7a] opacity-20 transition-all duration-200 ease-out hover:w-24 hover:opacity-40" />
 
+      {/* API Key Input */}
+      <div className="w-full max-w-md flex flex-col items-center space-y-3">
+        <label className="font-mono-label text-[10px] uppercase tracking-[0.3em] text-[#5b6b7a] opacity-60">
+          OpenAI API Key
+        </label>
+        <input
+          type="password"
+          value={apiKey}
+          onChange={(e) => onApiKeyChange(e.target.value)}
+          placeholder="sk-..."
+          className="w-full px-4 py-2.5 font-mono-label text-xs bg-white/20 backdrop-blur-sm border border-white/30 rounded text-[#3d4b58] placeholder:text-[#5b6b7a] placeholder:opacity-40 focus:outline-none focus:border-white/50 focus:bg-white/30 transition-all duration-200"
+        />
+        <p className="text-[9px] text-[#5b6b7a] opacity-40 text-center max-w-sm">
+          Your API key is stored locally and never sent to our servers. Get your key at{' '}
+          <a 
+            href="https://platform.openai.com/api-keys" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="underline hover:opacity-60 transition-opacity"
+          >
+            platform.openai.com
+          </a>
+        </p>
+      </div>
+
       <div className="flex flex-col items-center space-y-4">
         <button
           onClick={generateAIPrompt}
-          disabled={isGenerating}
+          disabled={isGenerating || !apiKey.trim()}
           className="relative flex items-center justify-center px-12 py-5 font-mono-label text-sm tracking-[0.3em] transition-all duration-200 transform hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100 overflow-hidden group glass-generate-button"
         >
           <span className="absolute inset-0 bg-[#3d4b58]/80 backdrop-blur-xl border border-white/20 transition-all duration-200 group-hover:bg-[#3d4b58]/90 group-hover:border-white/30"></span>
@@ -298,6 +327,22 @@ const App: React.FC = () => {
   const [aiPrompt, setAiPrompt] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
+  
+  // Load API key from localStorage on mount
+  const [apiKey, setApiKey] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('openai_api_key') || '';
+    }
+    return '';
+  });
+
+  // Save API key to localStorage when it changes
+  const handleApiKeyChange = useCallback((key: string) => {
+    setApiKey(key);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('openai_api_key', key);
+    }
+  }, []);
 
   const shuffle = useCallback((isConstraint: boolean, current: string, setter: (val: string) => void) => {
     let next;
@@ -309,10 +354,15 @@ const App: React.FC = () => {
   }, []);
 
   const generateAIPrompt = useCallback(async () => {
+    if (!apiKey || apiKey.trim() === '') {
+      setAiPrompt("Please enter your OpenAI API key to generate prompts.");
+      return;
+    }
+
     setIsGenerating(true);
     try {
       const openai = new OpenAI({ 
-        apiKey: process.env.API_KEY || '',
+        apiKey: apiKey.trim(),
         dangerouslyAllowBrowser: true,
         timeout: 10000, // 10 second timeout
       });
@@ -328,11 +378,15 @@ const App: React.FC = () => {
       setAiPrompt(response.choices[0]?.message?.content?.trim() || "Failed to generate prompt.");
     } catch (error) {
       console.error("AI Generation Error:", error);
-      setAiPrompt("The stars didn't align for this prompt. Try again.");
+      if (error instanceof Error && error.message.includes('api key')) {
+        setAiPrompt("Invalid API key. Please check your OpenAI API key and try again.");
+      } else {
+        setAiPrompt("The stars didn't align for this prompt. Try again.");
+      }
     } finally {
       setIsGenerating(false);
     }
-  }, [word1, word2, constraint]);
+  }, [word1, word2, constraint, apiKey]);
 
   const copyToClipboard = useCallback(async () => {
     if (aiPrompt) {
@@ -396,6 +450,8 @@ const App: React.FC = () => {
           aiPrompt={aiPrompt}
           copyToClipboard={copyToClipboard}
           copied={copied}
+          apiKey={apiKey}
+          onApiKeyChange={handleApiKeyChange}
         />
       </main>
 
