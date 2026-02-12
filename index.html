@@ -22,6 +22,32 @@
             font-style: italic;
             text-transform: lowercase;
         }
+        .font-serif-notes {
+            font-family: 'Baskervville', serif;
+            font-weight: 300;
+            font-style: normal;
+            text-transform: none;
+        }
+        .notes-editor {
+            white-space: pre-wrap;
+            word-break: break-word;
+            outline: none;
+        }
+        .notes-editor:empty::before {
+            content: attr(data-placeholder);
+            color: rgba(91, 107, 122, 0.45);
+        }
+        .annotation-marker {
+            /* light teal, semi-transparent, squared marker UNDER the text */
+            background: linear-gradient(
+                transparent 55%,
+                rgba(110, 231, 221, 0.55) 55%,
+                rgba(110, 231, 221, 0.55) 100%
+            );
+            box-decoration-break: clone;
+            -webkit-box-decoration-break: clone;
+            padding: 0 0.08em;
+        }
         .font-mono-label {
             font-family: 'Space Mono', monospace;
         }
