@@ -3,6 +3,156 @@ import React, { useState, useCallback, useMemo, memo, useEffect } from 'react';
 import { RefreshCcw, ChevronDown, Sparkles, Loader2, Copy, Check } from 'lucide-react';
 import OpenAI from 'openai';
 
+interface AnnotatedNotesProps {
+  valueHtml: string;
+  onChangeHtml: (html: string) => void;
+  placeholder?: string;
+}
+
+const AnnotatedNotes: React.FC<AnnotatedNotesProps> = memo(({ valueHtml, onChangeHtml, placeholder = 'type freely…' }) => {
+  const editorRef = React.useRef<HTMLDivElement>(null);
+  const [hasSelection, setHasSelection] = React.useState(false);
+
+  // Keep DOM in sync with stored HTML (without fighting user typing)
+  React.useEffect(() => {
+    const el = editorRef.current;
+    if (!el) return;
+    const current = el.innerHTML;
+    if (current !== valueHtml) el.innerHTML = valueHtml;
+  }, [valueHtml]);
+
+  const save = React.useCallback(() => {
+    const el = editorRef.current;
+    if (!el) return;
+    onChangeHtml(el.innerHTML);
+  }, [onChangeHtml]);
+
+  const updateSelectionState = React.useCallback(() => {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) {
+      setHasSelection(false);
+      return;
+    }
+    const range = sel.getRangeAt(0);
+    const el = editorRef.current;
+    if (!el) {
+      setHasSelection(false);
+      return;
+    }
+    const within = el.contains(range.commonAncestorContainer);
+    setHasSelection(within && !range.collapsed);
+  }, []);
+
+  const toggleHighlightSelection = React.useCallback(() => {
+    const el = editorRef.current;
+    const sel = window.getSelection();
+    if (!el || !sel || sel.rangeCount === 0) return;
+
+    const range = sel.getRangeAt(0);
+    if (range.collapsed) return;
+    if (!el.contains(range.commonAncestorContainer)) return;
+
+    // If selection intersects existing highlights, remove them (toggle off)
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_ELEMENT, {
+      acceptNode: (node) => {
+        if (node instanceof HTMLElement && node.classList.contains('annotation-marker')) return NodeFilter.FILTER_ACCEPT;
+        return NodeFilter.FILTER_SKIP;
+      },
+    });
+
+    const intersecting: HTMLElement[] = [];
+    let n = walker.nextNode();
+    while (n) {
+      const node = n as HTMLElement;
+      // `intersectsNode` is supported in modern browsers; guard just in case.
+      const intersects =
+        typeof (range as any).intersectsNode === 'function'
+          ? (range as any).intersectsNode(node)
+          : node.contains(range.startContainer) || node.contains(range.endContainer);
+      if (intersects) intersecting.push(node);
+      n = walker.nextNode();
+    }
+
+    if (intersecting.length > 0) {
+      // Unwrap marker spans
+      intersecting.forEach((marker) => {
+        const parent = marker.parentNode;
+        if (!parent) return;
+        while (marker.firstChild) parent.insertBefore(marker.firstChild, marker);
+        parent.removeChild(marker);
+        (parent as HTMLElement).normalize?.();
+      });
+    } else {
+      const span = document.createElement('span');
+      span.className = 'annotation-marker';
+
+      // Prefer surroundContents, fall back to extract/insert for complex selections
+      try {
+        range.surroundContents(span);
+      } catch {
+        const contents = range.extractContents();
+        span.appendChild(contents);
+        range.insertNode(span);
+      }
+    }
+
+    // Collapse selection and persist
+    sel.removeAllRanges();
+    save();
+    setHasSelection(false);
+  }, [save]);
+
+  const onKeyDown = React.useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      // Cmd/Ctrl + H to highlight selection
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'h') {
+        e.preventDefault();
+        toggleHighlightSelection();
+      }
+    },
+    [toggleHighlightSelection]
+  );
+
+  return (
+    <div className="w-full">
+      <div className="flex items-center justify-between w-full mb-3">
+        <span className="font-mono-label text-[#5b6b7a] text-[10px] opacity-60 uppercase tracking-[0.4em]">
+          notes
+        </span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={toggleHighlightSelection}
+            disabled={!hasSelection}
+            className="glass-button px-3 py-1.5 font-mono-label text-[10px] tracking-[0.25em] text-[#5b6b7a] uppercase disabled:opacity-40"
+            title="Toggle highlight (Cmd/Ctrl+H)"
+          >
+            highlight
+          </button>
+          <span className="font-mono-label text-[#5b6b7a] text-[9px] opacity-30 uppercase tracking-[0.3em]">
+            saved locally
+          </span>
+        </div>
+      </div>
+
+      <div
+        ref={editorRef}
+        className="glass-button notes-editor w-full min-h-[60vh] lg:min-h-[72vh] p-6 font-serif-notes text-[16px] md:text-[18px] leading-relaxed text-[#3d4b58] focus:outline-none focus:border-white/50 focus:bg-white/30 transition-all duration-200 resize-none rounded-sm"
+        contentEditable
+        role="textbox"
+        aria-multiline="true"
+        data-placeholder={placeholder}
+        suppressContentEditableWarning
+        onInput={save}
+        onKeyUp={updateSelectionState}
+        onMouseUp={updateSelectionState}
+        onKeyDown={onKeyDown}
+        spellCheck={false}
+      />
+    </div>
+  );
+});
+
 // Large pool of common, recognizable words (nouns, verbs, adjectives, etc.)
 const WORD_POOL = [
   'apple', 'ocean', 'mountain', 'river', 'forest', 'desert', 'cloud', 'star', 'moon', 'sun', 'wind', 'rain', 'snow', 'fire', 'water', 'earth', 'stone', 'crystal', 'metal', 'wood',
@@ -344,6 +494,21 @@ const App: React.FC = () => {
     }
   }, []);
 
+  // Notes panel state (HTML, stored locally)
+  const [notesHtml, setNotesHtml] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('notes_html') || '';
+    }
+    return '';
+  });
+
+  const handleNotesHtmlChange = useCallback((val: string) => {
+    setNotesHtml(val);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('notes_html', val);
+    }
+  }, []);
+
   const shuffle = useCallback((isConstraint: boolean, current: string, setter: (val: string) => void) => {
     let next;
     do {
@@ -420,39 +585,53 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Vertical Stack */}
-      <main className="relative z-10 w-full flex flex-col items-center space-y-8 pb-10">
-        <PromptSlot
-          label="element i"
-          value={word1}
-          onShuffle={shuffleWord1}
-          onChange={setWord1}
-        />
+      {/* Main: 3-column layout (2 left, 1 right) */}
+      <main className="relative z-10 w-full max-w-6xl px-6 md:px-10 pb-10 grid grid-cols-1 lg:grid-cols-3 gap-10 items-start">
+        {/* Left: existing stack spans 2 columns */}
+        <section className="lg:col-span-2 flex flex-col items-center space-y-8">
+          <PromptSlot
+            label="element i"
+            value={word1}
+            onShuffle={shuffleWord1}
+            onChange={setWord1}
+          />
 
-        <PromptSlot
-          label="element ii"
-          value={word2}
-          onShuffle={shuffleWord2}
-          onChange={setWord2}
-        />
+          <PromptSlot
+            label="element ii"
+            value={word2}
+            onShuffle={shuffleWord2}
+            onChange={setWord2}
+          />
 
-        <PromptSlot
-          label="constraint"
-          value={constraint}
-          onShuffle={shuffleConstraint}
-          onChange={setConstraint}
-        />
+          <PromptSlot
+            label="constraint"
+            value={constraint}
+            onShuffle={shuffleConstraint}
+            onChange={setConstraint}
+          />
 
-        {/* AI Action Section */}
-        <AIActionSection 
-          generateAIPrompt={generateAIPrompt}
-          isGenerating={isGenerating}
-          aiPrompt={aiPrompt}
-          copyToClipboard={copyToClipboard}
-          copied={copied}
-          apiKey={apiKey}
-          onApiKeyChange={handleApiKeyChange}
-        />
+          {/* AI Action Section */}
+          <AIActionSection 
+            generateAIPrompt={generateAIPrompt}
+            isGenerating={isGenerating}
+            aiPrompt={aiPrompt}
+            copyToClipboard={copyToClipboard}
+            copied={copied}
+            apiKey={apiKey}
+            onApiKeyChange={handleApiKeyChange}
+          />
+        </section>
+
+        {/* Right: notes panel */}
+        <aside className="lg:col-span-1 w-full lg:sticky lg:top-28">
+          <div className="w-full flex flex-col items-center lg:items-stretch space-y-3">
+            <AnnotatedNotes
+              valueHtml={notesHtml}
+              onChangeHtml={handleNotesHtmlChange}
+              placeholder="type freely… select words → highlight"
+            />
+          </div>
+        </aside>
       </main>
 
       {/* Persistent Footer */}
